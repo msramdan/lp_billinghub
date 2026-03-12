@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#13737D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Logout - WiFi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #13737D;
+            --primary-dark: #0f5a63;
+            --secondary: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --bg-light: #f8fafc;
+            --bg-dark: #121212;
+            --card-light: #ffffff;
+            --card-dark: #1e1e1e;
+            --text-light: #333333;
+            --text-dark: #e0e0e0;
+            --border-light: #dee2e6;
+            --border-dark: #444444;
+            --success-bg-light: rgba(40, 167, 69, 0.1);
+            --success-bg-dark: rgba(40, 167, 69, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-light);
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            padding: 0;
+            margin: 0;
+            touch-action: pan-y;
+        }
+
+        body.dark {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        /* Container */
+        .status-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--primary);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 100;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            color: white;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .login-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            color: white;
+            text-decoration: none;
+        }
+
+        .login-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Welcome Card */
+        .welcome-card {
+            background: var(--card-light);
+            margin: 15px;
+            padding: 25px 20px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: background 0.3s;
+            text-align: center;
+            border: 1px solid var(--border-light);
+            animation: fadeIn 0.5s ease;
+        }
+
+        body.dark .welcome-card {
+            background: var(--card-dark);
+            border-color: var(--border-dark);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .welcome-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-light);
+        }
+
+        body.dark .welcome-title {
+            color: var(--text-dark);
+        }
+
+        .logout-message {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(19, 115, 125, 0.1);
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        body.dark .logout-message {
+            background: rgba(19, 115, 125, 0.2);
+        }
+
+        .welcome-subtitle {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        /* Time Display */
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(19, 115, 125, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px;
+            border: 1px solid rgba(19, 115, 125, 0.2);
+            transition: all 0.3s;
+        }
+
+        body.dark .time-display {
+            background: rgba(19, 115, 125, 0.2);
+            border-color: rgba(19, 115, 125, 0.3);
+        }
+
+        .time-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        .time-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .time-primary {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-light);
+            line-height: 1.3;
+        }
+
+        body.dark .time-primary {
+            color: var(--text-dark);
+        }
+
+        .time-secondary {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        /* Status Section */
+        .status-section {
+            flex: 1;
+            padding: 0 15px 15px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 20px 0 15px;
+            padding-left: 5px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark .section-title {
+            color: var(--text-dark);
+        }
+
+        .status-card {
+            background: var(--card-light);
+            border-radius: 16px;
+            padding: 0;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: background 0.3s;
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+
+        body.dark .status-card {
+            background: var(--card-dark);
+            border-color: var(--border-dark);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border-light);
+            transition: border-color 0.3s;
+        }
+
+        body.dark .status-item {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        body.dark .status-label {
+            color: var(--text-dark);
+        }
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+        }
+
+        .status-value {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--primary);
+            text-align: right;
+        }
+
+        /* Login Button */
+        .login-section {
+            padding: 15px;
+            margin-top: 10px;
+            background: var(--bg-light);
+            border-top: 1px solid var(--border-light);
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        body.dark .login-section {
+            background: var(--bg-dark);
+            border-top-color: var(--border-dark);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(19, 115, 125, 0.3);
+        }
+
+        .login-button:active {
+            transform: scale(0.98);
+            background: var(--primary-dark);
+        }
+
+        /* Footer */
+        .footer {
+            padding: 15px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            background: var(--bg-light);
+            transition: all 0.3s;
+        }
+
+        body.dark .footer {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .status-container {
+                max-width: 500px;
+                margin: 0 auto;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+                min-height: 100vh;
+            }
+            
+            body {
+                background: #f0f2f5;
+                padding: 20px 0;
+            }
+            
+            body.dark {
+                background: #0a0a0a;
+            }
+            
+            .login-section {
+                border-radius: 0 0 16px 16px;
+                border-top: none;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .header {
+                padding: 15px;
+                border-radius: 0 0 12px 12px;
+            }
+            
+            .welcome-card,
+            .time-display {
+                margin: 12px;
+            }
+            
+            .login-section {
+                padding: 12px;
+                border-top: 1px solid var(--border-light);
+            }
+            
+            body.dark .login-section {
+                border-top-color: var(--border-dark);
+            }
+        }
+
+        /* Safe Area for iOS */
+        @supports (padding: max(0px)) {
+            .header {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+                padding-top: max(15px, env(safe-area-inset-top));
+            }
+            
+            .status-section {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+            }
+            
+            .login-section {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+            
+            .footer {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+                padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Prevents text selection on mobile */
+        button,
+        .theme-toggle,
+        .login-btn {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* Improves touch response on mobile */
+        button,
+        .theme-toggle,
+        .login-btn {
+            touch-action: manipulation;
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                </div>
+                <div class="logo-text">Logout WiFi</div>
+            </div>
+            
+            <div class="header-controls">
+                <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                <form action="$(link-login)" name="login" onSubmit="return openLogin()" style="display: inline;">
+                    <button type="submit" class="login-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Logout Message Card -->
+        <div class="welcome-card">
+            <div class="welcome-title">Status Koneksi</div>
+            <div class="logout-message">Anda berhasil Logout</div>
+            <div class="welcome-subtitle">Terima kasih telah menggunakan layanan WiFi kami. Anda telah terputus dari jaringan.</div>
+        </div>
+
+        <!-- Time Display -->
+        <div class="time-display">
+            <div class="time-group">
+                <div class="time-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <div class="time-info">
+                    <div class="time-primary" id="tglMasehi">Kamis, 1 Januari 2026</div>
+                    <div class="time-secondary" id="tglHijriyah">1 Muharram 1404 H</div>
+                </div>
+            </div>
+            
+            <div class="time-group">
+                <div class="time-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="time-info">
+                    <div class="time-primary" id="jam">11:51:38</div>
+                    <div class="time-secondary">Waktu Server</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Information -->
+        <div class="status-section">
+            <div class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Informasi Status Terakhir
+            </div>
+
+            <div class="status-card">
+                <!-- IP Address-->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">🌐</div>
+                        <span>IP Address</span>
+                    </div>
+                    <div class="status-value">$(ip)</div>
+                </div>
+                
+                <!-- MAC Address-->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">🔧</div>
+                        <span>MAC Address</span>
+                    </div>
+                    <div class="status-value">$(mac)</div>
+                </div>
+                
+                <!-- Traffic -->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">📊</div>
+                        <span>Upload/Download</span>
+                    </div>
+                    <div class="status-value">$(bytes-in-nice) | $(bytes-out-nice)</div>
+                </div>
+                
+                <!-- Aktif-->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">⏱️</div>
+                        <span>Waktu Aktif</span>
+                    </div>
+                    <div class="status-value">$(uptime)</div>
+                </div>
+                
+                $(if remain-bytes-total)
+                <!-- Sisa Kuota -->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">⏳</div>
+                        <span>Sisa Kuota</span>
+                    </div>
+                    <div class="status-value">$(remain-bytes-total-nice)</div>
+                </div>
+                $(endif)
+                
+                $(if session-time-left)
+                <!-- Masa Aktif -->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">⏰</div>
+                        <span>Masa Aktif</span>
+                    </div>
+                    <div class="status-value">$(session-time-left)</div>
+                </div>
+                $(endif)
+                
+                $(if blocked == 'yes')
+                <!-- Ads -->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">📢</div>
+                        <span>Iklan</span>
+                    </div>
+                    <div class="status-value">
+                        <a href="$(link-advert)" target="hotspot_advert" style="color: var(--primary); text-decoration: underline;">
+                            advertisement
+                        </a>
+                    </div>
+                </div>
+                $(elif refresh-timeout)
+                <!-- Refresh -->
+                <div class="status-item">
+                    <div class="status-label">
+                        <div class="status-icon">🔄</div>
+                        <span>Refresh</span>
+                    </div>
+                    <div class="status-value">$(refresh-timeout)</div>
+                </div>
+                $(endif)
+            </div>
+        </div>
+
+        <!-- Login Button -->
+        <div class="login-section">
+            <form action="$(link-login)" name="login" onSubmit="return openLogin()">
+                <button type="submit" class="login-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    Masuk / Login
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Support by: <a href="http://billinghub.id/" target="_blank" rel="noopener">billinghub.id</a>
+        </div>
+    </div>
+
+    <script>
+        // ==============================
+        // FUNGSI TEMA
+        // ==============================
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.querySelector('.theme-toggle');
+            body.classList.toggle('dark');
+            btn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
+            localStorage.setItem('theme', body.classList.contains('dark') ? 'dark' : 'light');
+            
+            // Update theme color meta tag
+            const themeColor = body.classList.contains('dark') ? '#121212' : '#13737D';
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', themeColor);
+        }
+
+        // ==============================
+        // FUNGSI JAM & TANGGAL
+        // ==============================
+        function updateDateTime() {
+            const now = new Date();
+            
+            // Format jam
+            const jam = now.getHours().toString().padStart(2, '0');
+            const menit = now.getMinutes().toString().padStart(2, '0');
+            const detik = now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('jam').textContent = `${jam}:${menit}:${detik}`;
+            
+            // Format tanggal Masehi
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            const tglMasehi = now.toLocaleDateString('id-ID', options);
+            document.getElementById('tglMasehi').textContent = tglMasehi;
+            
+            // Format tanggal Hijriyah (simulasi)
+            const hijriDate = getHijriDate(now);
+            document.getElementById('tglHijriyah').textContent = hijriDate;
+        }
+        
+        function getHijriDate(date) {
+            // Ini adalah simulasi sederhana. Untuk implementasi nyata, gunakan library hijriyah
+            const hijriMonths = ['Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir', 
+                                'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban', 
+                                'Ramadhan', 'Syawal', 'Dzulqaidah', 'Dzulhijjah'];
+            
+            // Simulasi: anggap tanggal 1 Januari 2026 = 1 Muharram 1404 H
+            const baseDate = new Date('2026-01-01');
+            const diffDays = Math.floor((date - baseDate) / (1000 * 60 * 60 * 24));
+            
+            let day = 1 + diffDays;
+            let month = 0;
+            
+            while (day > 30) { // Anggap setiap bulan hijriyah 30 hari
+                day -= 30;
+                month = (month + 1) % 12;
+            }
+            
+            if (day < 1) day = 1;
+            if (day > 30) day = 30;
+            
+            return `${day} ${hijriMonths[month]} 1404 H`;
+        }
+
+        // ==============================
+        // FUNGSI LOGIN
+        // ==============================
+        function openLogin() {
+            return true;
+        }
+        
+        function showLoading() {
+            // Buat loading overlay sederhana
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.style.position = 'fixed';
+            loadingOverlay.style.top = '0';
+            loadingOverlay.style.left = '0';
+            loadingOverlay.style.width = '100%';
+            loadingOverlay.style.height = '100%';
+            loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.style.justifyContent = 'center';
+            loadingOverlay.style.alignItems = 'center';
+            loadingOverlay.style.zIndex = '9999';
+            
+            const spinner = document.createElement('div');
+            spinner.style.width = '50px';
+            spinner.style.height = '50px';
+            spinner.style.border = '4px solid rgba(255, 255, 255, 0.3)';
+            spinner.style.borderRadius = '50%';
+            spinner.style.borderTopColor = '#13737D';
+            spinner.style.animation = 'spin 1s linear infinite';
+            
+            loadingOverlay.appendChild(spinner);
+            document.body.appendChild(loadingOverlay);
+            
+            // Tambahkan style untuk animasi spin
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // ==============================
+        // INITIALIZATION
+        // ==============================
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔄 Logout Page Initialized');
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+                document.querySelector('.theme-toggle').textContent = '☀️';
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121212');
+            } else {
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#13737D');
+            }
+            
+            // Update waktu setiap detik
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            // Animate elements on load
+            const cards = document.querySelectorAll('.welcome-card, .status-card, .time-display');
+            cards.forEach((card, index) => {
+                card.style.animation = `slideIn 0.5s ease ${index * 0.1}s forwards`;
+                card.style.opacity = '0';
+            });
+            
+            // Format nilai numerik jika perlu
+            formatNumericValues();
+        });
+        
+        function formatNumericValues() {
+            // Format data transfer
+            const transferElements = document.querySelectorAll('.status-value');
+            transferElements.forEach(el => {
+                const text = el.textContent;
+                if (text.includes('KiB') || text.includes('MiB') || text.includes('GiB')) {
+                    el.style.fontFamily = 'monospace';
+                    el.style.letterSpacing = '0.5px';
+                }
+            });
+        }
+
+        // Mencegah zoom double tap di mobile
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Mencegah zoom gesture di mobile
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

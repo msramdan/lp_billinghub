@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#13737D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title id="pageTitle">WiFi Login</title>
+    <script type="text/javascript" src="https://app.midtrans.com/snap/snap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1/build/qrcode.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="loading" id="loadingSpinner">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="header">
+        <div class="logo">WiFi Login</div>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+
+    <div class="welcome-section" id="welcomeSection">
+        <div class="company-name">Memuat informasi perusahaan...</div>
+        <div class="contact-info">Voucher Internet • Aktivasi Otomatis</div>
+    </div>
+
+    <!-- MASUKAN TAG GAMBAR DI SINI -->
+    <!-- <div class="welcome-section">
+        <img src="logo.png" alt="" style="display:block; max-width:250px; width:100%; margin:0 auto;">
+    </div> -->
+
+    <div class="container">
+        <div class="content">
+            <div id="autoLoginMessage" class="auto-login-message">
+                <div style="font-size: 1.2rem; margin-bottom: 5px;">✅ QR Code Berhasil Dipindai!</div>
+                <div>Login otomatis dalam <span class="countdown" id="autoLoginCountdown">3</span> detik...</div>
+            </div>
+
+            <div class="voucher-section">
+                $(if error)
+                <div class="notice" style="
+                    color: #721c24; 
+                    background-color: #f8d7da; 
+                    border: 1px solid #f5c6cb; 
+                    border-radius: 10px; 
+                    padding: 10px;
+                    margin: 15px auto; 
+                    font-size: 16px;
+                    text-align: center;
+                    max-width: 500px;
+                    position: relative;
+                ">
+                    $(error)
+                    <button type="button" class="close-btn" onclick="this.parentElement.style.display='none'" style="
+                        position: absolute;
+                        top: 50%;
+                        right: 12px;
+                        transform: translateY(-50%);
+                        background: transparent;
+                        border: none;
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: #721c24;
+                        cursor: pointer;
+                        padding: 0;
+                        width: 24px;
+                        height: 24px;
+                        line-height: 1;
+                        border-radius: 50%;
+                        transition: background-color 0.2s;
+                    ">
+                        &times;
+                    </button>
+                </div>
+                $(endif)
+                <div id="alertContainer" class="alert-container"></div>
+                <form autocomplete="off" name="loginvoucher" action="$(link-login-only)" method="post">
+                    <div class="input-wrapper">
+                        <input type="text" name="username" required placeholder="Masukkan Voucher" id="kodeVoucher"
+                            style="font-size: 20px; padding: 20px; height: 60px; width: 100%;">
+                        <input type="hidden" name="password" id="password">
+                    </div>
+                    <button type="button" class="btn-primary" onclick="submitVoucher()" id="submitVoucherBtn"
+                        style="font-size: 20px; padding: 18px 40px;">Masuk</button>
+                </form>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-card" onclick="openExternalQRScanner()">
+                    <div class="menu-card-icon">📱</div>
+                    <h4>Scan<br>QR Code</h4>
+                </div>
+
+                <div class="menu-card whatsapp-card" onclick="openModal('adminModal')">
+                    <div class="menu-card-icon">💬</div>
+                    <h4>Hubungi<br>Admin</h4>
+                </div>
+            </div>
+
+            <div id="packageInfoContainer"></div>
+            <div class="price-section" id="priceSection">
+                <h3>
+                    📋 Daftar Harga Voucher
+                    <button class="refresh-btn" onclick="loadVouchers()" title="Refresh voucher">🔄</button>
+                </h3>
+
+                <div class="voucher-scroll-container">
+                    <div class="price-list" id="voucherList">
+                        <div class="price-card">
+                            <div class="price-left">
+                                <div class="price-icon">⏳</div>
+                                <div class="price-info">
+                                    <div class="price-title">Memuat voucher...</div>
+                                    <div class="price-duration">Harap tunggu</div>
+                                </div>
+                            </div>
+                            <div class="price-right">
+                                Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Support by: <a href="http://billinghub.id/" target="_blank" rel="noopener">billinghub.id</a>
+    </div>
+
+    <div class="modal" id="adminModal" onclick="closeModalOnBackdrop(event, 'adminModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Hubungi Admin</h3>
+                <button class="close-modal" onclick="closeModal('adminModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <div class="info-icon">👨‍💼</div>
+                    <p class="info-text">Jika Anda mengalami kendala atau membutuhkan bantuan, silahkan hubungi admin
+                        melalui kontak berikut:</p>
+
+                    <div class="admin-contact-info" id="adminContactInfo">
+                        <div class="contact-item">
+                            <div class="contact-icon">📞</div>
+                            <div class="contact-text">
+                                <strong>Nomor WhatsApp Admin:</strong>
+                                <span id="adminWhatsapp">Memuat...</span>
+                                <button class="copy-btn" onclick="copyToClipboard('adminWhatsapp')">Salin Nomor</button>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">💬</div>
+                            <div class="contact-text">
+                                <strong>Catatan:</strong>
+                                Harap sertakan nama dan detail kendala yang dialami saat menghubungi admin.
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="closeModal('adminModal')"
+                        style="margin-top: 20px;">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="buyVoucherModal" onclick="closeModalOnBackdrop(event, 'buyVoucherModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Beli Voucher</h3>
+                <button class="close-modal" onclick="closeModal('buyVoucherModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Alert container untuk modal pembelian -->
+                <div id="modalAlertContainer" class="modal-alert-container"></div>
+
+                <div class="alert alert-info" style="margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.1rem;">ℹ️</span>
+                        <span style="font-size: 0.85rem;">Voucher akan dikirim ke WhatsApp Anda maksimal 5 menit setelah
+                            pembayaran berhasil.</span>
+                    </div>
+                </div>
+
+                <form id="buyVoucherForm" onsubmit="return processPurchase(event)">
+                    <div class="voucher-details" id="selectedVoucherInfo">
+                        <!-- Info voucher terpilih akan muncul di sini -->
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="customerName" required>
+                        <small>Minimal 5 karakter, maksimal 100 karakter</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nomor WhatsApp</label>
+                        <input type="tel" id="customerWhatsapp" required>
+                        <small>Format: 62 (contoh: 6281234567890) atau 0 (contoh: 081234567890)</small>
+                    </div>
+
+                    <!-- Metode Pembayaran Tripay: grid kartu (icon + Pilih Metode) -->
+                    <div class="form-group tripay-methods-wrap" id="paymentMethodGroup" style="display: none;">
+                        <h6 class="tripay-methods-title">
+                            <span class="tripay-methods-icon">💳</span> Bayar dengan Tripay
+                        </h6>
+                        <div class="tripay-methods-loading" id="tripayMethodsLoading">Memuat metode pembayaran...</div>
+                        <div class="tripay-method-grid" id="tripayMethodGrid"></div>
+                        <small class="tripay-methods-hint" id="tripayMethodsHint" style="display: none;">Pilih salah satu metode di atas</small>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn-primary" style="background: var(--danger);"
+                            onclick="closeModal('buyVoucherModal')">
+                            Batal
+                        </button>
+                        <button type="submit" class="btn-primary" style="background: var(--secondary);"
+                            id="submitOrderBtn">
+                            Beli Sekarang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="successModal" onclick="closeModalOnBackdrop(event, 'successModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Pembelian Berhasil</h3>
+                <button class="close-modal" onclick="closeModal('successModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <div class="info-icon success-icon">✅</div>
+                    <p class="info-text" id="successMessage">
+                        Order berhasil dibuat! Membuka metode pembayaran...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="errorModal" onclick="closeModalOnBackdrop(event, 'errorModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Terjadi Kesalahan</h3>
+                <button class="close-modal" onclick="closeModal('errorModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <div class="info-icon error-icon">❌</div>
+                    <p class="info-text" id="errorMessage">
+                        Terjadi kesalahan saat memproses pembelian. Silahkan coba lagi.
+                    </p>
+                    <button class="btn-primary" onclick="closeModal('errorModal')">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal QRIS / Qrin: hanya tutup lewat tombol X atau Tutup -->
+    <div class="modal" id="qrinPaymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Bayar dengan QRIS</h3>
+                <button class="close-modal" onclick="closeModal('qrinPaymentModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="info-text" style="margin-bottom: 12px;">Scan QR code berikut dengan e-wallet atau mobile banking Anda:</p>
+                <div id="qris-merchant" class="qris-merchant-box">
+                    <div class="qris-info-overview text-center">
+                        <div class="qris-logo-top">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_QRIS.svg/1280px-Logo_QRIS.svg.png"
+                                alt="QRIS" class="qris-logo-img">
+                        </div>
+                        <div id="qrisCodeContainer" class="qris-code-container">
+                            <canvas id="qrinQrCanvas"></canvas>
+                        </div>
+                        <div class="nmid-section">
+                            <p class="qris-nmid-text">NMID : <span id="qrisNmid">-</span></p>
+                        </div>
+                        <div class="qris-footer-branding">
+                            <span class="qris-by-text">QRIS by</span>
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/1/1f/Logo_Nobubank.png"
+                                alt="Nobu" class="qris-nobu-logo">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-primary" style="margin-top: 15px;" onclick="closeModal('qrinPaymentModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="autoLoginConfirmModal" onclick="closeModalOnBackdrop(event, 'autoLoginConfirmModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title">Auto Login</h3>
+                <button class="close-modal" onclick="closeModal('autoLoginConfirmModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <div class="info-icon">🤖</div>
+                    <p class="info-text">
+                        Kami menemukan kode voucher dari login sebelumnya:
+                        <br>
+                        <strong style="font-size: 1.2rem; color: var(--primary);" id="savedVoucherCode">XXXXXX</strong>
+                    </p>
+                    <p class="info-text" style="margin-top: 10px; font-size: 0.9rem;">
+                        Apakah Anda ingin melanjutkan login dengan kode voucher ini?
+                    </p>
+
+                    <div class="voucher-details" id="voucherDetails" style="margin: 15px 0; display: none;">
+                        <!-- Detail voucher akan dimuat di sini -->
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                        <button class="btn-primary" onclick="useNewVoucher()" style="background: var(--danger);">
+                            Gunakan Voucher Baru
+                        </button>
+                        <button class="btn-primary" onclick="confirmAutoLogin()" style="background: var(--secondary);"
+                            id="confirmAutoLoginBtn">
+                            Ya, Lanjutkan Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="md5.js"></script>
+    <script src="billinghub.js"></script>
+</body>
+
+</html>
