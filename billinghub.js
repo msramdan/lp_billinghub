@@ -3,7 +3,7 @@
 // ==============================
 const API_CONFIG = {
   baseUrl: "https://billinghub.id/api",
-  token: "wy0biFx24F6zwriFq23lLI7bRx5arGeEjAjErTMYsuCQrTE8KowH5uHoHXTtu9Pu",
+  token: "XXXX",
 };
 
 // ==============================
@@ -140,10 +140,10 @@ function checkAutoLoginFromUrl() {
 
 function saveVoucherToStorage(voucherCode) {
   // Hanya simpan ke localStorage jika paket Silver ke atas (paket_id >= 2)
-  if (currentPackageId === null || currentPackageId < 2) {
-    console.log("Paket Bronze/Free, skip menyimpan ke localStorage");
-    return;
-  }
+  // if (currentPackageId === null || currentPackageId < 2) {
+  //   console.log("Paket Bronze/Free, skip menyimpan ke localStorage");
+  //   return;
+  // }
 
   try {
     const voucherData = {
@@ -170,10 +170,10 @@ function removeVoucherFromStorage() {
 
 function getSavedVoucher() {
   // Hanya cek localStorage jika paket Silver ke atas
-  if (currentPackageId === null || currentPackageId < 2) {
-    console.log("Paket Bronze/Free, skip auto login");
-    return null;
-  }
+  // if (currentPackageId === null || currentPackageId < 2) {
+  //   console.log("Paket Bronze/Free, skip auto login");
+  //   return null;
+  // }
 
   try {
     const savedData = localStorage.getItem("wifi_voucher");
@@ -237,10 +237,10 @@ async function checkVoucherStatus(voucherCode) {
 
 function showAutoLoginConfirm(voucherCode) {
   // Hanya tampilkan auto login jika paket Silver ke atas
-  if (currentPackageId === null || currentPackageId < 2) {
-    console.log("Paket Bronze/Free, skip auto login confirm");
-    return;
-  }
+  // if (currentPackageId === null || currentPackageId < 2) {
+  //   console.log("Paket Bronze/Free, skip auto login confirm");
+  //   return;
+  // }
 
   console.log("🔍 Auto login detected:", voucherCode);
 
