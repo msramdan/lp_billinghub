@@ -550,7 +550,8 @@ body.dark .voucher-section h3 {
 }
 
 input[type="text"],
-input[type="tel"] {
+input[type="tel"],
+input[type="password"] {
     width: 100%;
     padding: 12px 14px;
     border: 1.5px solid var(--border-light);
@@ -563,7 +564,8 @@ input[type="tel"] {
 }
 
 body.dark input[type="text"],
-body.dark input[type="tel"] {
+body.dark input[type="tel"],
+body.dark input[type="password"] {
     background: var(--bg-dark);
     border-color: var(--border-dark);
     color: var(--text-dark);

@@ -3,7 +3,7 @@
 // ==============================
 const API_CONFIG = {
   baseUrl: "https://billinghub.id/api",
-  token: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  token: "wy0biFx24F6zwriFq23lLI7bRx5arGeEjAjErTMYsuCQrTE8KowH5uHoHXTtu9Pu",
 };
 
 // ==============================
