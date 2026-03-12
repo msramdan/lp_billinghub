@@ -495,6 +495,45 @@ body.dark .voucher-section {
     background: var(--card-dark);
 }
 
+.login-tabs {
+    display: flex;
+    background: rgba(19, 115, 125, 0.06);
+    border-radius: 999px;
+    padding: 3px;
+    margin-bottom: 14px;
+}
+
+.login-tab-button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+}
+
+body.dark .login-tab-button {
+    color: var(--text-dark);
+}
+
+.login-tab-button.active {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(19, 115, 125, 0.3);
+}
+
+.login-tab-content {
+    display: none;
+}
+
+.login-tab-content.active {
+    display: block;
+}
+
 .voucher-section h3 {
     font-size: 1rem;
     margin-bottom: 12px;

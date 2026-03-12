@@ -41,8 +41,19 @@
             </div>
 
             <div class="voucher-section">
-                $(if error)
-                <div class="notice" style="
+                <div class="login-tabs">
+                    <button type="button" class="login-tab-button active" data-target="voucherTab"
+                        onclick="openLoginTab('voucherTab', this)">
+                        Kode Voucher
+                    </button>
+                    <button type="button" class="login-tab-button" data-target="userPassTab"
+                        onclick="openLoginTab('userPassTab', this)">
+                        User Password
+                    </button>
+                </div>
+                <div id="voucherTab" class="login-tab-content active">
+                    $(if error)
+                    <div class="notice" style="
                     color: #721c24; 
                     background-color: #f8d7da; 
                     border: 1px solid #f5c6cb; 
@@ -54,8 +65,8 @@
                     max-width: 500px;
                     position: relative;
                 ">
-                    $(error)
-                    <button type="button" class="close-btn" onclick="this.parentElement.style.display='none'" style="
+                        $(error)
+                        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none'" style="
                         position: absolute;
                         top: 50%;
                         right: 12px;
@@ -73,20 +84,47 @@
                         border-radius: 50%;
                         transition: background-color 0.2s;
                     ">
-                        &times;
-                    </button>
-                </div>
-                $(endif)
-                <div id="alertContainer" class="alert-container"></div>
-                <form autocomplete="off" name="loginvoucher" action="$(link-login-only)" method="post">
-                    <div class="input-wrapper">
-                        <input type="text" name="username" required placeholder="Masukkan Voucher" id="kodeVoucher"
-                            style="font-size: 20px; padding: 20px; height: 60px; width: 100%;">
-                        <input type="hidden" name="password" id="password">
+                            &times;
+                        </button>
                     </div>
-                    <button type="button" class="btn-primary" onclick="submitVoucher()" id="submitVoucherBtn"
-                        style="font-size: 20px; padding: 18px 40px;">Masuk</button>
-                </form>
+                    $(endif)
+                    <div id="alertContainer" class="alert-container"></div>
+                    <form autocomplete="off" name="loginvoucher" action="$(link-login-only)" method="post">
+                        <div class="input-wrapper">
+                            <input type="text" name="username" required placeholder="Masukkan Voucher" id="kodeVoucher"
+                                style="font-size: 20px; padding: 20px; height: 60px; width: 100%;">
+                            <input type="hidden" name="password" id="password">
+                        </div>
+                        <button type="button" class="btn-primary" onclick="submitVoucher()" id="submitVoucherBtn"
+                            style="font-size: 20px; padding: 18px 40px;">Masuk</button>
+                    </form>
+                </div>
+
+                <div id="userPassTab" class="login-tab-content">
+                    <form autocomplete="off" name="loginuser" action="$(link-login-only)" method="post">
+                        <input type="hidden" name="dst" value="$(link-orig)">
+                        <input type="hidden" name="popup" value="true">
+
+                        <div class="input-wrapper">
+                            <input type="text" id="userLogin" name="username_display" required
+                                placeholder="Masukkan Username"
+                                style="font-size: 18px; padding: 16px; height: 52px; width: 100%;">
+                        </div>
+                        <div class="input-wrapper" style="margin-top: 10px;">
+                            <input type="password" id="userPassword" name="password_display" required
+                                placeholder="Masukkan Password"
+                                style="font-size: 18px; padding: 16px; height: 52px; width: 100%;">
+                        </div>
+
+                        <input type="hidden" name="username">
+                        <input type="hidden" name="password">
+
+                        <button type="button" class="btn-primary" onclick="submitUserPassword()"
+                            id="submitUserPassBtn" style="font-size: 20px; padding: 18px 40px;">
+                            Masuk
+                        </button>
+                    </form>
+                </div>
             </div>
 
             <div class="menu-section">
@@ -338,6 +376,85 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function openLoginTab(tabId, buttonEl) {
+            var contents = document.getElementsByClassName("login-tab-content");
+            for (var i = 0; i < contents.length; i++) {
+                contents[i].classList.remove("active");
+            }
+
+            var buttons = document.getElementsByClassName("login-tab-button");
+            for (var j = 0; j < buttons.length; j++) {
+                buttons[j].classList.remove("active");
+            }
+
+            var target = document.getElementById(tabId);
+            if (target) {
+                target.classList.add("active");
+            }
+
+            if (buttonEl) {
+                buttonEl.classList.add("active");
+            }
+        }
+
+        function submitUserPassword() {
+            var usernameInput = document.getElementById("userLogin");
+            var passwordInput = document.getElementById("userPassword");
+            var form = document.forms.loginuser;
+            var submitBtn = document.getElementById("submitUserPassBtn");
+
+            var username = (usernameInput.value || "").trim();
+            var password = passwordInput.value || "";
+
+            if (!username || !password) {
+                if (typeof showAlert === "function") {
+                    showAlert("Silahkan isi Username dan Password", "warning");
+                } else {
+                    alert("Silahkan isi Username dan Password");
+                }
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Memproses...";
+
+            try {
+                form.username.value = username;
+
+                var chapId = "$(chap-id)" || "";
+                var chapChallenge = "$(chap-challenge)" || "";
+
+                if (chapId && chapChallenge && typeof hexMD5 === "function") {
+                    var hashString = chapId + password + chapChallenge;
+                    form.password.value = hexMD5(hashString);
+                } else {
+                    form.password.value = password;
+                }
+
+                if (typeof showLoading === "function") {
+                    showLoading(true);
+                }
+
+                setTimeout(function () {
+                    form.submit();
+                }, 500);
+            } catch (e) {
+                console.error("Login user/password error:", e);
+                if (typeof showAlert === "function") {
+                    showAlert("Terjadi kesalahan saat login: " + e.message, "danger");
+                } else {
+                    alert("Terjadi kesalahan saat login: " + e.message);
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Masuk";
+                if (typeof showLoading === "function") {
+                    showLoading(false);
+                }
+            }
+        }
+    </script>
 
     <script src="md5.js"></script>
     <script src="billinghub.js"></script>
