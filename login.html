@@ -170,7 +170,7 @@
         Support by: <a href="http://billinghub.id/" target="_blank" rel="noopener">billinghub.id</a>
     </div>
 
-    <div class="modal" id="adminModal" onclick="closeModalOnBackdrop(event, 'adminModal')">
+    <div class="modal" id="adminModal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-handle"></div>
@@ -208,7 +208,7 @@
         </div>
     </div>
 
-    <div class="modal" id="buyVoucherModal" onclick="closeModalOnBackdrop(event, 'buyVoucherModal')">
+    <div class="modal" id="buyVoucherModal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-handle"></div>
@@ -244,14 +244,10 @@
                         <small>Format: 62 (contoh: 6281234567890) atau 0 (contoh: 081234567890)</small>
                     </div>
 
-                    <!-- Metode Pembayaran Tripay: grid kartu (icon + Pilih Metode) -->
+                    <!-- Metode pembayaran (Tripay / Qrin / gateway lain) -->
                     <div class="form-group tripay-methods-wrap" id="paymentMethodGroup" style="display: none;">
-                        <h6 class="tripay-methods-title">
-                            <span class="tripay-methods-icon">💳</span> Bayar dengan Tripay
-                        </h6>
                         <div class="tripay-methods-loading" id="tripayMethodsLoading">Memuat metode pembayaran...</div>
                         <div class="tripay-method-grid" id="tripayMethodGrid"></div>
-                        <small class="tripay-methods-hint" id="tripayMethodsHint" style="display: none;">Pilih salah satu metode di atas</small>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
@@ -269,7 +265,7 @@
         </div>
     </div>
 
-    <div class="modal" id="successModal" onclick="closeModalOnBackdrop(event, 'successModal')">
+    <div class="modal" id="successModal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-handle"></div>
@@ -287,7 +283,7 @@
         </div>
     </div>
 
-    <div class="modal" id="errorModal" onclick="closeModalOnBackdrop(event, 'errorModal')">
+    <div class="modal" id="errorModal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-handle"></div>
@@ -315,6 +311,7 @@
                 <button class="close-modal" onclick="closeModal('qrinPaymentModal')">×</button>
             </div>
             <div class="modal-body">
+                <div id="qrinQrSummary" class="qrin-qr-summary" style="display: none;"></div>
                 <p class="info-text" style="margin-bottom: 12px;">Scan QR code berikut dengan e-wallet atau mobile banking Anda:</p>
                 <div id="qris-merchant" class="qris-merchant-box">
                     <div class="qris-info-overview text-center">
@@ -325,22 +322,55 @@
                         <div id="qrisCodeContainer" class="qris-code-container">
                             <canvas id="qrinQrCanvas"></canvas>
                         </div>
-                        <div class="nmid-section">
-                            <p class="qris-nmid-text">NMID : <span id="qrisNmid">-</span></p>
-                        </div>
-                        <div class="qris-footer-branding">
-                            <span class="qris-by-text">QRIS by</span>
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/1/1f/Logo_Nobubank.png"
-                                alt="Nobu" class="qris-nobu-logo">
-                        </div>
                     </div>
                 </div>
-                <button class="btn-primary" style="margin-top: 15px;" onclick="closeModal('qrinPaymentModal')">Tutup</button>
+                <div id="qrinPaymentStatusMsg" class="qrin-status-msg" style="display: none;" role="status"></div>
+                <div id="qrinVoucherResult" class="qrin-voucher-result" style="display: none;">
+                    <p class="qrin-voucher-result-label">Kode voucher Anda</p>
+                    <div class="qrin-voucher-code" id="qrinVoucherCodeDisplay"></div>
+                    <button type="button" class="qrin-va-copy" id="qrinCopyVoucherBtn">Salin kode</button>
+                </div>
+                <p class="qrin-modal-note">Setelah pembayaran, ketuk <strong>Cek Pembayaran</strong> untuk menampilkan kode voucher.</p>
+                <div class="qrin-modal-actions">
+                    <button type="button" class="btn-primary qrin-modal-btn" id="qrinCheckPaymentBtn"
+                        onclick="qrinCheckPaymentStatus()">Cek Pembayaran</button>
+                    <button type="button" class="btn-primary qrin-modal-btn qrin-modal-btn--close"
+                        onclick="closeModal('qrinPaymentModal')">Tutup</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="modal" id="autoLoginConfirmModal" onclick="closeModalOnBackdrop(event, 'autoLoginConfirmModal')">
+    <!-- Virtual Account / gerai (Qrin) -->
+    <div class="modal" id="qrinVaModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-handle"></div>
+                <h3 class="modal-title" id="qrinVaModalTitle">Virtual Account</h3>
+                <button class="close-modal" onclick="closeModal('qrinVaModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="qrinVaSummary" class="qrin-pay-summary"></div>
+                <div id="qrinVaModalBody" class="qrin-va-list"></div>
+                <p class="tripay-methods-hint" style="margin-top: 12px;">Selesaikan pembayaran sesuai nominal. Voucher juga dikirim ke WhatsApp setelah terverifikasi.</p>
+                <div id="qrinVaPaymentStatusMsg" class="qrin-status-msg" style="display: none;" role="status"></div>
+                <div id="qrinVaVoucherResult" class="qrin-voucher-result" style="display: none;">
+                    <p class="qrin-voucher-result-label">Kode voucher Anda</p>
+                    <div class="qrin-voucher-code" id="qrinVaVoucherCodeDisplay"></div>
+                    <button type="button" class="qrin-va-copy" id="qrinVaCopyVoucherBtn">Salin kode</button>
+                </div>
+                <p class="qrin-modal-note">Setelah pembayaran, ketuk <strong>Cek Pembayaran</strong> untuk menampilkan kode voucher.</p>
+                <div class="qrin-modal-actions">
+                    <button type="button" class="btn-primary qrin-modal-btn" id="qrinVaCheckPaymentBtn"
+                        onclick="qrinCheckPaymentStatus()">Cek Pembayaran</button>
+                    <button type="button" class="btn-primary qrin-modal-btn qrin-modal-btn--close"
+                        onclick="closeModal('qrinVaModal')">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="autoLoginConfirmModal">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-handle"></div>

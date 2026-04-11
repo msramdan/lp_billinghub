@@ -3,7 +3,7 @@
 // ==============================
 const API_CONFIG = {
   baseUrl: "https://billinghub.id/api",
-  token: "XXXX",
+  token: "6UUCTOYWf50VJHU9PrUTHtJFamNgtDIl8Jkmg0kwWQ7ph5Xk4xPKAWFhT6VvNtcE",
 };
 
 // ==============================
@@ -18,11 +18,170 @@ let savedVoucherForAutoLogin = null;
 // State untuk paket
 let currentPackageId = null;
 
-// Daftar metode pembayaran Tripay (diisi setelah getPaymentMethods)
+// Daftar metode pembayaran (Tripay / Qrin; diisi setelah getPaymentMethods)
 let paymentMethodsList = [];
 
-// Metode Tripay yang dipilih user (code)
+// Metode yang dipilih user (code saluran)
 let selectedPaymentMethodCode = null;
+
+function isQrinPaymentGateway() {
+  const g = companyData && companyData.payment_gateway;
+  return g === "Qrin Payment Gateway" || g === "Qrin";
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Untuk atribut HTML (mis. src gambar) — jangan encode & agar URL Tripay/Qrin tetap valid */
+function escapeAttr(str) {
+  return String(str ?? "").replace(/"/g, "&quot;");
+}
+
+function methodFeeAmount(m) {
+  if (m == null) return 0;
+  if (typeof m.customer_cost === "number") return m.customer_cost;
+  if (m.customer_cost != null && m.customer_cost !== "") {
+    const n = parseInt(String(m.customer_cost), 10);
+    return isNaN(n) ? 0 : n;
+  }
+  const fc = m.fee_customer;
+  if (fc && typeof fc.flat === "number") return fc.flat;
+  const flat = m.fee_flat || m.fee_percent || 0;
+  const n = parseInt(String(flat), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+/**
+ * Pembulatan ke Rp penuh: bagian desimal < 0,5 ke bawah, ≥ 0,5 ke atas (contoh: 100,4→100, 100,5→101).
+ */
+function roundRpQrisPercentPart(amount) {
+  const x = Number(amount);
+  if (!Number.isFinite(x) || x <= 0) return 0;
+  const intPart = Math.floor(x);
+  const frac = x - intPart;
+  if (frac < 0.5) return intPart;
+  return intPart + 1;
+}
+
+/**
+ * Biaya admin QRIS (sama seperti contoh manual): **dulu** nominal + Rp 750, **baru** tambah 0,7% × (nominal + 750),
+ * dengan bagian persen dibulatkan ke Rp penuh. Setara: total bayar = (nominal + 750) + pembulatan(0,007 × (nominal + 750)).
+ */
+function computeQrinQrisAdminFeeRp(nominal) {
+  const n = Math.max(0, Math.floor(Number(nominal) || 0));
+  const flat = 750;
+  const subtotal = n + flat;
+  const rawPct = (subtotal * 7) / 1000;
+  const pctPart = roundRpQrisPercentPart(rawPct);
+  const total = flat + pctPart;
+  return { flat, pctPart, total, totalBayar: n + total };
+}
+
+/** Dipanggil setelah order Qrin sukses — dipakai ringkasan modal QR & VA */
+function setQrinOrderFeeSummaryFromPurchase(data) {
+  const nominal = Math.round(Number(data.amount)) || 0;
+  const method = paymentMethodsList.find(
+    (m) => String(m.code || m.channel_code || "") === String(selectedPaymentMethodCode || "")
+  );
+  let adminRp = 0;
+  if (method && isQrinQrisMethodRow(method)) {
+    adminRp = computeQrinQrisAdminFeeRp(nominal).total;
+  } else if (method) {
+    adminRp = methodFeeAmount(method);
+  }
+  window._qrinOrderFeeSummary = {
+    nominal,
+    adminRp,
+    totalRp: nominal + adminRp,
+  };
+}
+
+/** Ringkasan: Nominal, Biaya admin (satu angka), Total pembayaran — tanpa rumus detail */
+function buildQrinOrderSummaryHtml(data) {
+  const fs = window._qrinOrderFeeSummary;
+  const hasAmt = data.amount != null && !isNaN(Number(data.amount));
+  const nominal = hasAmt
+    ? fs
+      ? fs.nominal
+      : Math.round(Number(data.amount)) || 0
+    : 0;
+  const adminRp = fs ? fs.adminRp : 0;
+  const totalRp = fs ? fs.totalRp : nominal + adminRp;
+  const val = data.validity ? String(data.validity) : "";
+  const storeId =
+    data.store_id != null && String(data.store_id).trim() !== ""
+      ? String(data.store_id)
+      : "";
+
+  if (!hasAmt && !val && !storeId) {
+    return "";
+  }
+
+  let html = "";
+  if (hasAmt) {
+    html += `<div class="qrin-pay-summary-row"><span class="qrin-pay-summary-label">Nominal</span><span class="qrin-pay-summary-value">Rp ${nominal.toLocaleString("id-ID")}</span></div>`;
+    if (adminRp > 0) {
+      html += `<div class="qrin-pay-summary-row"><span class="qrin-pay-summary-label">Biaya admin</span><span class="qrin-pay-summary-value">Rp ${adminRp.toLocaleString("id-ID")}</span></div>`;
+    }
+    html += `<div class="qrin-pay-summary-row qrin-pay-summary-totalpay"><span class="qrin-pay-summary-label">Total pembayaran</span><span class="qrin-pay-summary-value">Rp ${totalRp.toLocaleString("id-ID")}</span></div>`;
+  }
+  if (val) {
+    html += `<div class="qrin-pay-summary-row"><span class="qrin-pay-summary-label">Berlaku</span><span style="text-align:right;font-size:0.8rem;font-weight:600;max-width:58%">${escapeHtml(val)}</span></div>`;
+  }
+  if (storeId) {
+    html += `<div class="qrin-pay-summary-row"><span class="qrin-pay-summary-label">Store ID</span><span style="font-size:0.8rem;">${escapeHtml(storeId)}</span></div>`;
+  }
+  return html;
+}
+
+function qrinCheckStatusElements() {
+  const va = window._qrinActivePaymentModal === "qrinVaModal";
+  return {
+    msgEl: document.getElementById(va ? "qrinVaPaymentStatusMsg" : "qrinPaymentStatusMsg"),
+    btn: document.getElementById(va ? "qrinVaCheckPaymentBtn" : "qrinCheckPaymentBtn"),
+    resultBox: document.getElementById(va ? "qrinVaVoucherResult" : "qrinVoucherResult"),
+    codeEl: document.getElementById(va ? "qrinVaVoucherCodeDisplay" : "qrinVoucherCodeDisplay"),
+    copyBtn: document.getElementById(va ? "qrinVaCopyVoucherBtn" : "qrinCopyVoucherBtn"),
+  };
+}
+
+function qrinInitCheckStatusUi(which) {
+  const va = which === "va";
+  const msg = document.getElementById(va ? "qrinVaPaymentStatusMsg" : "qrinPaymentStatusMsg");
+  const btn = document.getElementById(va ? "qrinVaCheckPaymentBtn" : "qrinCheckPaymentBtn");
+  const resultBox = document.getElementById(va ? "qrinVaVoucherResult" : "qrinVoucherResult");
+  const codeEl = document.getElementById(va ? "qrinVaVoucherCodeDisplay" : "qrinVoucherCodeDisplay");
+  if (btn) {
+    btn.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = "Cek Pembayaran";
+  }
+  if (msg) {
+    msg.style.display = "none";
+    msg.textContent = "";
+    msg.className = "qrin-status-msg";
+  }
+  if (resultBox) resultBox.style.display = "none";
+  if (codeEl) codeEl.textContent = "";
+}
+
+/** Saluran QRIS di Qrin (bukan VA) — tanpa baris biaya admin di kartu */
+function isQrinQrisMethodRow(m) {
+  if (m == null) return false;
+  const c = String(m.code || m.channel_code || "")
+    .trim()
+    .toLowerCase();
+  if (c === "qr" || c === "qris") return true;
+  const t = String(m.type || "").toUpperCase();
+  if (t === "QRIS" || t === "QR") return true;
+  const g = String(m.group || "").toUpperCase();
+  return g.includes("QRIS");
+}
 
 // Variable untuk auto login timer
 let autoLoginTimer = null;
@@ -807,7 +966,6 @@ function showBuyModal(voucherId) {
   const paymentMethodGroup = document.getElementById("paymentMethodGroup");
   const tripayMethodGrid = document.getElementById("tripayMethodGrid");
   const tripayMethodsLoading = document.getElementById("tripayMethodsLoading");
-  const tripayMethodsHint = document.getElementById("tripayMethodsHint");
   const needPaymentMethod = companyData && companyData.need_payment_method === true;
 
   selectedPaymentMethodCode = null;
@@ -816,7 +974,6 @@ function showBuyModal(voucherId) {
     paymentMethodGroup.style.display = "block";
     tripayMethodsLoading.style.display = "block";
     tripayMethodGrid.innerHTML = "";
-    tripayMethodsHint.style.display = "none";
     paymentMethodsList = [];
     const amount = parseHargaToNumber(selectedVoucher.harga);
     loadPaymentMethods(amount);
@@ -827,11 +984,10 @@ function showBuyModal(voucherId) {
   openModal("buyVoucherModal");
 }
 
-/** Ambil daftar metode pembayaran Tripay (GET ?amount=...) dan render grid kartu */
+/** Ambil daftar metode pembayaran (Tripay / Qrin) dan render grid kartu */
 async function loadPaymentMethods(amount) {
   const tripayMethodGrid = document.getElementById("tripayMethodGrid");
   const tripayMethodsLoading = document.getElementById("tripayMethodsLoading");
-  const tripayMethodsHint = document.getElementById("tripayMethodsHint");
 
   if (!tripayMethodGrid || !tripayMethodsLoading) return;
 
@@ -842,43 +998,101 @@ async function loadPaymentMethods(amount) {
 
     tripayMethodsLoading.style.display = "none";
 
-    if (result.success && result.data && result.data.methods && result.data.methods.length > 0) {
-      paymentMethodsList = result.data.methods;
-      tripayMethodsHint.style.display = "block";
+    if (!result.success) {
+      paymentMethodsList = [];
+      tripayMethodGrid.innerHTML = `<div class="tripay-method-empty">${escapeHtml(
+        result.message || "Gagal memuat metode pembayaran"
+      )}</div>`;
+      return;
+    }
 
-      tripayMethodGrid.innerHTML = result.data.methods
-        .map((m) => {
-          const code = m.code || m.channel_code || String(m.id);
-          const escapedCode = code.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-          const name = m.name || m.group || code;
-          const nameAttr = String(name).replace(/"/g, "&quot;");
-          const iconUrl = m.icon_url || "";
-          const fee = m.fee_flat || m.fee_percent || 0;
+    const methods = (result.data && result.data.methods) || [];
+    if (methods.length === 0) {
+      paymentMethodsList = [];
+      tripayMethodGrid.innerHTML =
+        '<div class="tripay-method-empty">Tidak ada metode pembayaran untuk nominal ini</div>';
+      return;
+    }
+
+    paymentMethodsList = methods;
+
+    const qrinUi = isQrinPaymentGateway();
+
+    tripayMethodGrid.innerHTML = methods
+      .map((m, idx) => {
+        const name = m.name || m.label || m.group || m.code || "";
+        const nameAttr = escapeHtml(name);
+        const iconUrl = (m.icon_url || m.logo_url || "").trim();
+
+        /* Tripay / gateway lain: tampilan kartu seperti semula (tanpa fee di kartu) */
+        if (!qrinUi) {
           return `
-            <div class="tripay-method-card" data-code="${escapedCode}" data-fee="${fee}" onclick="selectTripayMethod(this.dataset.code)">
+            <div class="tripay-method-card" data-idx="${idx}" onclick="selectPaymentMethodCard(this)">
               <div class="tripay-method-frame">
-                ${iconUrl ? `<img src="${iconUrl}" alt="${nameAttr}" class="tripay-method-icon" onerror="this.style.display='none'">` : `<span class="tripay-method-placeholder">💳</span>`}
+                ${
+                  iconUrl
+                    ? `<img src="${escapeAttr(iconUrl)}" alt="${nameAttr}" class="tripay-method-icon" onerror="this.style.display='none'">`
+                    : `<span class="tripay-method-placeholder">💳</span>`
+                }
               </div>
               <div class="tripay-method-name" title="${nameAttr}">${name}</div>
             </div>
           `;
-        })
-        .join("");
-    } else {
-      tripayMethodGrid.innerHTML = '<div class="tripay-method-empty">Tidak ada metode pembayaran tersedia</div>';
-    }
+        }
+
+        /* Qrin: QRIS = +750 lalu 0,7% dari (nominal+750); VA/gerai = +Rp saja (tanpa kata "Admin") */
+        const fee = methodFeeAmount(m);
+        const inactive = m.active === false;
+        const isQr = isQrinQrisMethodRow(m);
+        let feeLine = "";
+        if (isQr) {
+          feeLine = `<div class="tripay-method-fee tripay-method-fee--qris">+750 lalu 0,7%</div>`;
+        } else if (fee > 0) {
+          feeLine = `<div class="tripay-method-fee">+Rp ${fee.toLocaleString("id-ID")}</div>`;
+        }
+
+        const cardClass =
+          "tripay-method-card" + (inactive ? " tripay-method-card--inactive" : "");
+
+        return `
+            <div class="${cardClass}" data-idx="${idx}" onclick="selectPaymentMethodCard(this)">
+              <div class="tripay-method-frame">
+                ${
+                  iconUrl
+                    ? `<img src="${escapeAttr(iconUrl)}" alt="${nameAttr}" class="tripay-method-icon" onerror="this.style.display='none'">`
+                    : `<span class="tripay-method-placeholder">💳</span>`
+                }
+              </div>
+              <div class="tripay-method-name" title="${nameAttr}">${name}</div>
+              ${feeLine}
+            </div>
+          `;
+      })
+      .join("");
   } catch (err) {
     console.error("Error loading payment methods:", err);
     tripayMethodsLoading.style.display = "none";
-    tripayMethodGrid.innerHTML = '<div class="tripay-method-empty">Gagal memuat metode pembayaran</div>';
+    tripayMethodGrid.innerHTML =
+      '<div class="tripay-method-empty">Gagal memuat metode pembayaran</div>';
   }
 }
 
-/** Pilih metode bayar Tripay (dipanggil saat kartu diklik) */
-function selectTripayMethod(code) {
+/** Pilih kartu metode bayar (Tripay / Qrin) */
+function selectPaymentMethodCard(el) {
+  const idx = parseInt(el.dataset.idx, 10);
+  const m = paymentMethodsList[idx];
+  if (!m) return;
+  if (isQrinPaymentGateway() && m.active === false) {
+    showModalAlert(
+      "Metode ini tidak tersedia untuk nominal voucher (VA biasanya minimal Rp 10.000).",
+      "warning"
+    );
+    return;
+  }
+  const code = m.code || m.channel_code || String(m.id ?? "");
   selectedPaymentMethodCode = code;
-  document.querySelectorAll(".tripay-method-card").forEach((el) => {
-    el.classList.toggle("selected", el.dataset.code === code);
+  document.querySelectorAll(".tripay-method-card").forEach((node) => {
+    node.classList.toggle("selected", node === el);
   });
 }
 
@@ -938,10 +1152,19 @@ async function processPurchase(event) {
     };
 
     if (needPaymentMethod && selectedMethodCode) {
-      orderData.payment_method = selectedMethodCode;
-      const method = paymentMethodsList.find((m) => (m.code || m.channel_code) === selectedMethodCode);
-      const fee = method ? (method.fee_flat || method.fee_percent || 0) : 0;
-      if (fee > 0) orderData.payment_fee = fee;
+      const method = paymentMethodsList.find(
+        (m) => String(m.code || m.channel_code || "") === String(selectedMethodCode)
+      );
+      const fee = method ? methodFeeAmount(method) : 0;
+      const qrinQr = method && isQrinQrisMethodRow(method);
+      if (isQrinPaymentGateway()) {
+        orderData.qrin_payment_method = selectedMethodCode;
+        /* Biaya admin di payload hanya untuk VA; QRIS tidak kirim +750 / % */
+        if (fee > 0 && !qrinQr) orderData.payment_fee = fee;
+      } else {
+        orderData.payment_method = selectedMethodCode;
+        if (fee > 0) orderData.payment_fee = fee;
+      }
     }
 
     console.log("Sending order data:", orderData);
@@ -957,12 +1180,17 @@ async function processPurchase(event) {
 
     const result = await response.json();
     if (result.success) {
+      const data = result.data || {};
+      if (isQrinPaymentGateway() && data.amount != null) {
+        setQrinOrderFeeSummaryFromPurchase(data);
+      } else {
+        window._qrinOrderFeeSummary = null;
+      }
+
       document.getElementById("successMessage").textContent =
         "Order berhasil dibuat! Membuka metode pembayaran...";
       closeModal("buyVoucherModal");
       openModal("successModal");
-
-      const data = result.data || {};
 
       if (data.midtrans_token) {
         setTimeout(() => {
@@ -972,7 +1200,16 @@ async function processPurchase(event) {
         setTimeout(() => {
           openTripayPayment(data.payment_url, data.kode_transaksi);
         }, 1000);
-      } else if (data.qr_content) {
+      } else if (
+        isQrinPaymentGateway() &&
+        (data.payment_kind === "VA" ||
+          (Array.isArray(data.va_number_list) && data.va_number_list.length) ||
+          (data.va_number && String(data.va_number).trim() !== ""))
+      ) {
+        setTimeout(() => {
+          showQrinVaModal(data);
+        }, 1000);
+      } else if (isQrinPaymentGateway() && data.qr_content) {
         setTimeout(() => {
           showQrinPaymentModal(data);
         }, 1000);
@@ -993,7 +1230,7 @@ async function processPurchase(event) {
   return false;
 }
 
-/** Redirect ke halaman pembayaran Tripay */
+/** Redirect ke halaman pembayaran Tripay (checkout) */
 function openTripayPayment(paymentUrl, kodeTransaksi) {
   closeModal("successModal");
   if (paymentUrl) {
@@ -1007,7 +1244,94 @@ function openTripayPayment(paymentUrl, kodeTransaksi) {
   }
 }
 
-/** Tampilkan modal QRIS (Qrin) dengan qr_content dari response */
+function copyQrinVaText(text) {
+  const t = String(text || "");
+  if (!t) return;
+  const done = () => showAlert("Disalin ke clipboard", "success");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done).catch(() => {
+      fallbackCopyQrinVa(t);
+    });
+  } else {
+    fallbackCopyQrinVa(t);
+  }
+}
+
+function fallbackCopyQrinVa(t) {
+  const ta = document.createElement("textarea");
+  ta.value = t;
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    showAlert("Disalin", "success");
+  } catch (e) {
+    showAlert("Gagal menyalin", "danger");
+  }
+  document.body.removeChild(ta);
+}
+
+/** Instruksi Virtual Account / gerai (Qrin) */
+function showQrinVaModal(data) {
+  closeModal("successModal");
+
+  window._qrinOrderKode = data.kode_transaksi || null;
+  window._qrinActivePaymentModal = "qrinVaModal";
+  window._qrinVoucherCode = null;
+  qrinInitCheckStatusUi("va");
+
+  let rows = [];
+  if (Array.isArray(data.va_number_list) && data.va_number_list.length) {
+    rows = data.va_number_list.filter((r) => (r.va_number || "").toString().trim() !== "");
+  }
+  if (rows.length === 0 && data.va_number && String(data.va_number).trim() !== "") {
+    rows = [{ bank: data.va_bank || "Bank", va_number: data.va_number }];
+  }
+
+  const meta = String((data.va_bank || "") + " " + (data.reference || "")).toLowerCase();
+  const isGerai = meta.includes("finpaycode") || meta.includes("indomaret");
+  const titleEl = document.getElementById("qrinVaModalTitle");
+  if (titleEl) {
+    titleEl.textContent = isGerai ? "Bayar di Gerai" : "Virtual Account";
+  }
+
+  const summaryEl = document.getElementById("qrinVaSummary");
+  if (summaryEl) {
+    const html = buildQrinOrderSummaryHtml(data);
+    summaryEl.innerHTML =
+      html ||
+      '<p class="tripay-methods-hint" style="margin:0;">Lakukan pembayaran sesuai nominal di bawah.</p>';
+    summaryEl.style.display = "block";
+  }
+
+  const body = document.getElementById("qrinVaModalBody");
+  if (!body) return;
+
+  if (rows.length === 0) {
+    body.innerHTML =
+      '<div class="tripay-method-empty">Nomor pembayaran tidak tersedia. Hubungi admin jika masalah berlanjut.</div>';
+    openModal("qrinVaModal");
+    return;
+  }
+
+  const copyLabel = isGerai ? "Salin kode bayar" : "Salin nomor VA";
+
+  body.innerHTML = rows
+    .map((row) => {
+      const bank = row.bank || data.va_bank || "Virtual Account";
+      const num = String(row.va_number || "").trim();
+      return `<div class="qrin-va-card">
+          <div class="qrin-va-bank">${escapeHtml(bank)}</div>
+          <div class="qrin-va-num">${escapeHtml(num)}</div>
+          <button type="button" class="qrin-va-copy" onclick="copyQrinVaText(${JSON.stringify(num)})">${copyLabel}</button>
+        </div>`;
+    })
+    .join("");
+
+  openModal("qrinVaModal");
+}
+
+/** Modal QRIS (Qrin) — qr_content dari response */
 function showQrinPaymentModal(data) {
   closeModal("successModal");
 
@@ -1017,18 +1341,30 @@ function showQrinPaymentModal(data) {
     return;
   }
 
-  const qrisNmidEl = document.getElementById("qrisNmid");
-  const canvas = document.getElementById("qrinQrCanvas");
+  window._qrinOrderKode = data.kode_transaksi || null;
+  window._qrinActivePaymentModal = "qrinPaymentModal";
+  window._qrinVoucherCode = null;
+  qrinInitCheckStatusUi("qr");
 
-  if (qrisNmidEl) {
-    qrisNmidEl.textContent = data.store_id || data.reference || data.merchant_name || "-";
+  const summaryEl = document.getElementById("qrinQrSummary");
+  if (summaryEl) {
+    const html = buildQrinOrderSummaryHtml(data);
+    if (html) {
+      summaryEl.innerHTML = html;
+      summaryEl.style.display = "block";
+    } else {
+      summaryEl.innerHTML = "";
+      summaryEl.style.display = "none";
+    }
   }
+
+  const canvas = document.getElementById("qrinQrCanvas");
 
   canvas.width = 0;
   canvas.height = 0;
 
   if (typeof QRCode !== "undefined" && QRCode.toCanvas) {
-    QRCode.toCanvas(canvas, qrContent, { width: 220, margin: 2 }, (err) => {
+    QRCode.toCanvas(canvas, qrContent, { width: 200, margin: 2 }, (err) => {
       if (err) {
         console.error("QRCode error:", err);
         showAlert("Gagal menampilkan QR. Silakan coba lagi.", "danger");
@@ -1039,6 +1375,134 @@ function showQrinPaymentModal(data) {
   }
 
   openModal("qrinPaymentModal");
+}
+
+let qrinCheckPaymentBusy = false;
+
+/** Cek status pembayaran order Qrin (API publik, sama logika dengan halaman voucher web) */
+async function qrinCheckPaymentStatus() {
+  const kode = window._qrinOrderKode;
+  const { msgEl, btn, resultBox, codeEl, copyBtn } = qrinCheckStatusElements();
+
+  if (!kode || qrinCheckPaymentBusy) return;
+
+  qrinCheckPaymentBusy = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Memeriksa...";
+  }
+  if (msgEl) {
+    msgEl.style.display = "block";
+    msgEl.className = "qrin-status-msg qrin-status-msg--info";
+    msgEl.textContent = "Memeriksa status pembayaran...";
+  }
+  if (resultBox) resultBox.style.display = "none";
+
+  try {
+    const url = `${API_CONFIG.baseUrl}/v1/vouchers/${API_CONFIG.token}/cek-order-qrin`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ kode_transaksi: kode }),
+      mode: "cors",
+      credentials: "omit",
+    });
+
+    const raw = await response.text();
+    let result;
+    try {
+      result = raw ? JSON.parse(raw) : {};
+    } catch (parseErr) {
+      console.error("cek-order-qrin: bukan JSON", response.status, raw.slice(0, 400));
+      if (msgEl) {
+        msgEl.style.display = "block";
+        msgEl.className = "qrin-status-msg qrin-status-msg--warn";
+        msgEl.textContent =
+          "Server mengembalikan respons tidak valid (HTTP " +
+          response.status +
+          "). Pastikan alamat API benar atau coba lagi.";
+      }
+      return;
+    }
+
+    if (!result.success) {
+      if (msgEl) {
+        msgEl.style.display = "block";
+        msgEl.className = "qrin-status-msg qrin-status-msg--warn";
+        msgEl.textContent =
+          result.message || "Gagal memeriksa status pembayaran.";
+      }
+      return;
+    }
+
+    const d = result.data;
+    if (d == null || typeof d !== "object") {
+      if (msgEl) {
+        msgEl.style.display = "block";
+        msgEl.className = "qrin-status-msg qrin-status-msg--warn";
+        msgEl.textContent = "Format respons tidak dikenal. Coba lagi.";
+      }
+      return;
+    }
+
+    if (d.paid && d.processing) {
+      if (msgEl) {
+        msgEl.style.display = "block";
+        msgEl.className = "qrin-status-msg qrin-status-msg--info";
+        msgEl.textContent =
+          result.message ||
+          "Pembayaran diterima. Voucher sedang dibuat — coba lagi dalam beberapa detik.";
+      }
+      return;
+    }
+
+    if (d.paid && d.username_voucher) {
+      window._qrinVoucherCode = d.username_voucher;
+      if (msgEl) msgEl.style.display = "none";
+      if (codeEl) codeEl.textContent = d.username_voucher;
+      if (resultBox) resultBox.style.display = "block";
+      if (copyBtn) {
+        copyBtn.onclick = function () {
+          copyQrinVaText(d.username_voucher);
+        };
+      }
+      if (btn) btn.style.display = "none";
+      showAlert("Pembayaran berhasil. Simpan kode voucher Anda.", "success");
+      return;
+    }
+
+    if (msgEl) {
+      msgEl.style.display = "block";
+      msgEl.className = "qrin-status-msg qrin-status-msg--pending";
+      msgEl.textContent =
+        result.message ||
+        "Pembayaran belum terkonfirmasi. Setelah membayar, tunggu beberapa detik lalu cek lagi.";
+    }
+  } catch (e) {
+    console.error("qrinCheckPaymentStatus:", e);
+    if (msgEl) {
+      msgEl.style.display = "block";
+      msgEl.className = "qrin-status-msg qrin-status-msg--warn";
+      const isNet =
+        e &&
+        String(e.message || "")
+          .toLowerCase()
+          .includes("failed to fetch");
+      msgEl.textContent = isNet
+        ? "Tidak terhubung ke server (jaringan diblokir / halaman dibuka dari file:// / CORS). Gunakan hotspot dengan internet atau hubungi admin."
+        : (e && e.message) || "Terjadi kesalahan. Coba lagi.";
+    }
+  } finally {
+    qrinCheckPaymentBusy = false;
+    const fe = qrinCheckStatusElements();
+    if (fe.btn && fe.btn.style.display !== "none") {
+      fe.btn.disabled = false;
+      fe.btn.textContent = "Cek Pembayaran";
+    }
+  }
 }
 
 function openSnapPayment(token) {
